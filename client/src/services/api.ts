@@ -9,6 +9,9 @@ import type {
   TopicCategoryGroup,
   TopicStoriesResponse,
   RepostItem,
+  ReadingList,
+  ReadingListDetail,
+  StoryListStatus,
 } from '../types/index.js';
 
 const API_BASE = '/api';
@@ -204,6 +207,42 @@ export const api = {
 
   library: {
     getSaved: () => request<{ savedStories: Post[] }>('/library'),
+  },
+
+  lists: {
+    list: () => request<{ lists: ReadingList[] }>('/lists'),
+    create: (data: { name: string; description?: string; isPrivate?: boolean }) =>
+      request<{ list: ReadingList }>('/lists', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    get: (id: string) => request<{ list: ReadingListDetail }>(`/lists/${encodeURIComponent(id)}`),
+    update: (id: string, data: { name?: string; description?: string; isPrivate?: boolean }) =>
+      request<{ list: ReadingList }>(`/lists/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/lists/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    getStoryLists: (postId: string) =>
+      request<{ lists: StoryListStatus[] }>(`/lists/story/${encodeURIComponent(postId)}`),
+    syncStoryLists: (postId: string, listIds: string[]) =>
+      request<{ success: boolean; saved: boolean; listIds: string[] }>(
+        `/lists/story/${encodeURIComponent(postId)}/sync`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ listIds }),
+        }
+      ),
+    removeStory: (listId: string, postId: string) =>
+      request<{ success: boolean }>(
+        `/lists/${encodeURIComponent(listId)}/stories/${encodeURIComponent(postId)}`,
+        {
+          method: 'DELETE',
+        }
+      ),
   },
 
   users: {

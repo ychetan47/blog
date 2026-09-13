@@ -12,6 +12,7 @@ import settingsRouter from './routes/settings.routes.js';
 import unsplashRouter from './routes/unsplash.routes.js';
 import { subcategoriesRouter } from './routes/subcategories.routes.js';
 import topicsRouter from './routes/topics.routes.js';
+import listsRouter from './routes/lists.routes.js';
 import { seedTaxonomy } from './lib/seedTaxonomy.js';
 
 dotenv.config();
@@ -64,6 +65,7 @@ app.use('/api/subcategories', subcategoriesRouter);
 app.use('/api/topics', topicsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/unsplash', unsplashRouter);
+app.use('/api/lists', listsRouter);
 
 // Initialize taxonomy asynchronously on boot
 seedTaxonomy().catch((err) => console.error('Error auto-seeding taxonomy:', err));

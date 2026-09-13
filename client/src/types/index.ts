@@ -73,6 +73,34 @@ export interface RepostItem {
   post: Post;
 }
 
+export interface ReadingList {
+  id: string;
+  name: string;
+  description?: string | null;
+  isPrivate: boolean;
+  userId: string;
+  storyCount: number;
+  previewCovers: (string | null)[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadingListDetail extends ReadingList {
+  author?: {
+    id: string;
+    name: string;
+    avatarUrl?: string | null;
+  };
+  stories: Post[];
+}
+
+export interface StoryListStatus {
+  listId: string;
+  listName: string;
+  isPrivate: boolean;
+  isInList: boolean;
+}
+
 export interface Subcategory {
   id: string;
   name: string;

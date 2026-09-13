@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { api } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.js';
 import { useNavigate } from 'react-router-dom';
+import { SaveToListModal } from './SaveToListModal.js';
 
 /**
  * Custom BookmarkPlusIcon matching the user's requested specification:
@@ -72,11 +72,11 @@ export function SaveButton({
   onToggle,
 }: SaveButtonProps) {
   const [isSaved, setIsSaved] = useState(initialIsSaved);
-  const [isPending, setIsPending] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleToggle = async (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -85,19 +85,7 @@ export function SaveButton({
       return;
     }
 
-    const previous = isSaved;
-    setIsSaved(!previous);
-    setIsPending(true);
-
-    try {
-      const res = await api.posts.save(postId);
-      setIsSaved(res.saved);
-      onToggle?.(res.saved);
-    } catch {
-      setIsSaved(previous);
-    } finally {
-      setIsPending(false);
-    }
+    setModalOpen(true);
   };
 
   const iconClass =
@@ -108,29 +96,40 @@ export function SaveButton({
       : 'w-[18px] h-[18px]';
 
   return (
-    <button
-      type="button"
-      onClick={handleToggle}
-      disabled={isPending}
-      title={isSaved ? 'Saved to reading library (click to remove)' : 'Save story to reading library'}
-      aria-label={isSaved ? 'Remove from saved stories' : 'Save story to library'}
-      className={`inline-flex items-center gap-1.5 transition-all duration-200 cursor-pointer select-none active:scale-90 ${
-        isSaved
-          ? 'text-[#211E1A]'
-          : 'text-[#8A867E] hover:text-[#211E1A]'
-      } ${className}`}
-    >
-      {isSaved ? (
-        <BookmarkCheckIcon className={iconClass} />
-      ) : (
-        <BookmarkPlusIcon className={iconClass} />
-      )}
-      {showText && (
-        <span className="text-xs font-normal">
-          {isSaved ? 'Saved' : 'Save'}
-        </span>
-      )}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        title={isSaved ? 'Story saved in your lists' : 'Save story to list'}
+        aria-label={isSaved ? 'Story saved in your lists' : 'Save story to list'}
+        className={`inline-flex items-center gap-1.5 transition-all duration-200 cursor-pointer select-none active:scale-90 ${
+          isSaved
+            ? 'text-[#211E1A]'
+            : 'text-[#8A867E] hover:text-[#211E1A]'
+        } ${className}`}
+      >
+        {isSaved ? (
+          <BookmarkCheckIcon className={iconClass} />
+        ) : (
+          <BookmarkPlusIcon className={iconClass} />
+        )}
+        {showText && (
+          <span className="text-xs font-normal">
+            {isSaved ? 'Saved' : 'Save'}
+          </span>
+        )}
+      </button>
+
+      <SaveToListModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        postId={postId}
+        onSaveStatusChange={(saved) => {
+          setIsSaved(saved);
+          onToggle?.(saved);
+        }}
+      />
+    </>
   );
 }
 

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { api, type OnboardingCategory } from '../services/api.js';
-import type { Post, RepostItem } from '../types/index.js';
+import type { RepostItem, ReadingList, ReadingListDetail } from '../types/index.js';
 import { StoryCard } from '../components/StoryCard.js';
+import { ReadingListCard } from '../components/ReadingListCard.js';
 import {
   LogOut,
   Plus,
@@ -16,6 +17,9 @@ import {
   Mail,
   Shield,
   Calendar,
+  ArrowLeft,
+  Lock,
+  Trash2,
 } from 'lucide-react';
 
 type ProfileTab = 'home' | 'repost' | 'about';
@@ -26,9 +30,26 @@ export function ProfilePage() {
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('home');
 
-  // Tab 1 (Home): User's authored stories
-  const [myStories, setMyStories] = useState<Post[]>([]);
-  const [loadingMyStories, setLoadingMyStories] = useState(false);
+  // Tab 1 (Home): Reading Lists (Saved Collections)
+  const [lists, setLists] = useState<ReadingList[]>([]);
+  const [loadingLists, setLoadingLists] = useState(false);
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [selectedListDetail, setSelectedListDetail] = useState<ReadingListDetail | null>(null);
+  const [loadingListDetail, setLoadingListDetail] = useState(false);
+
+  // Create List Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [newListDescription, setNewListDescription] = useState('');
+  const [newListPrivate, setNewListPrivate] = useState(true);
+  const [isCreatingList, setIsCreatingList] = useState(false);
+
+  // Edit List Modal State
+  const [editingList, setEditingList] = useState<ReadingList | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPrivate, setEditPrivate] = useState(true);
+  const [isUpdatingList, setIsUpdatingList] = useState(false);
 
   // Tab 2 (Repost): User's reposted stories
   const [reposts, setReposts] = useState<RepostItem[]>([]);
@@ -41,7 +62,46 @@ export function ProfilePage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
-  // Load initial categories
+  // Fetch Reading Lists
+  const fetchLists = useCallback(() => {
+    if (!user) return;
+    setLoadingLists(true);
+    api.lists
+      .list()
+      .then((res) => {
+        setLists(res.lists || []);
+      })
+      .catch((err) => {
+        console.error('Failed to load reading lists:', err);
+      })
+      .finally(() => setLoadingLists(false));
+  }, [user]);
+
+  useEffect(() => {
+    fetchLists();
+  }, [fetchLists]);
+
+  // Fetch specific list detail when selected
+  useEffect(() => {
+    if (!selectedListId) {
+      setSelectedListDetail(null);
+      return;
+    }
+
+    setLoadingListDetail(true);
+    api.lists
+      .get(selectedListId)
+      .then((res) => {
+        setSelectedListDetail(res.list);
+      })
+      .catch((err) => {
+        console.error('Failed to load list details:', err);
+        setSelectedListDetail(null);
+      })
+      .finally(() => setLoadingListDetail(false));
+  }, [selectedListId]);
+
+  // Load initial categories for About tab
   useEffect(() => {
     api.onboarding
       .getCategories()
@@ -53,23 +113,7 @@ export function ProfilePage() {
       });
   }, []);
 
-  // Fetch authored stories for "Home"
-  useEffect(() => {
-    if (!user) return;
-    setLoadingMyStories(true);
-    api.posts
-      .myStories()
-      .then((res) => {
-        setMyStories(res.posts || []);
-      })
-      .catch((err) => {
-        console.error('Failed to load my stories:', err);
-        setMyStories([]);
-      })
-      .finally(() => setLoadingMyStories(false));
-  }, [user]);
-
-  // Fetch reposts for "Repost"
+  // Fetch reposts for "Repost" tab
   useEffect(() => {
     if (!user) return;
     setLoadingReposts(true);
@@ -169,6 +213,101 @@ export function ProfilePage() {
     }
   };
 
+  // Create List Handler
+  const handleCreateList = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newListName.trim();
+    if (!trimmed) return;
+
+    setIsCreatingList(true);
+    try {
+      const res = await api.lists.create({
+        name: trimmed,
+        description: newListDescription.trim() || undefined,
+        isPrivate: newListPrivate,
+      });
+
+      setLists((prev) => [...prev, res.list]);
+      setIsCreateModalOpen(false);
+      setNewListName('');
+      setNewListDescription('');
+      setNewListPrivate(true);
+    } catch (err) {
+      console.error('Failed to create list:', err);
+    } finally {
+      setIsCreatingList(false);
+    }
+  };
+
+  // Edit List Handler
+  const handleStartEdit = (list: ReadingList) => {
+    setEditingList(list);
+    setEditName(list.name);
+    setEditDescription(list.description || '');
+    setEditPrivate(list.isPrivate);
+  };
+
+  const handleUpdateList = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingList || !editName.trim()) return;
+
+    setIsUpdatingList(true);
+    try {
+      const res = await api.lists.update(editingList.id, {
+        name: editName.trim(),
+        description: editDescription.trim() || undefined,
+        isPrivate: editPrivate,
+      });
+
+      setLists((prev) =>
+        prev.map((l) => (l.id === editingList.id ? { ...l, ...res.list } : l))
+      );
+      if (selectedListDetail && selectedListDetail.id === editingList.id) {
+        setSelectedListDetail((prev) => (prev ? { ...prev, ...res.list } : null));
+      }
+      setEditingList(null);
+    } catch (err) {
+      console.error('Failed to update list:', err);
+    } finally {
+      setIsUpdatingList(false);
+    }
+  };
+
+  // Delete List Handler
+  const handleDeleteList = async (listId: string) => {
+    if (!window.confirm('Are you sure you want to delete this list?')) return;
+    try {
+      await api.lists.delete(listId);
+      setLists((prev) => prev.filter((l) => l.id !== listId));
+      if (selectedListId === listId) {
+        setSelectedListId(null);
+        setSelectedListDetail(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete list:', err);
+    }
+  };
+
+  // Remove Story from Current List
+  const handleRemoveStoryFromList = async (postId: string) => {
+    if (!selectedListId) return;
+    try {
+      await api.lists.removeStory(selectedListId, postId);
+      setSelectedListDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              stories: prev.stories.filter((s) => s.id !== postId),
+              storyCount: Math.max(0, prev.storyCount - 1),
+            }
+          : null
+      );
+      fetchLists();
+    } catch (err) {
+      console.error('Failed to remove story from list:', err);
+    }
+  };
+
   const initials = user.name
     ? user.name
         .split(' ')
@@ -209,7 +348,7 @@ export function ProfilePage() {
                     {user.role}
                   </span>
                   <span className="text-xs text-[#8A867E]">
-                    · {myStories.length} {myStories.length === 1 ? 'story' : 'stories'}
+                    · {lists.length} {lists.length === 1 ? 'list' : 'lists'}
                   </span>
                   <span className="text-xs text-[#8A867E]">
                     · {reposts.length} {reposts.length === 1 ? 'repost' : 'reposts'}
@@ -233,18 +372,29 @@ export function ProfilePage() {
         <nav className="flex items-center gap-8 border-b border-[#DDD9D0] mb-8" aria-label="Profile tabs">
           <button
             type="button"
-            onClick={() => setActiveTab('home')}
-            className={`pb-3 text-sm tracking-wide transition-colors relative cursor-pointer ${
+            onClick={() => {
+              setActiveTab('home');
+              setSelectedListId(null);
+            }}
+            className={`pb-3 text-sm tracking-wide transition-colors relative cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'home'
                 ? 'text-[#211E1A] font-medium after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#211E1A]'
                 : 'text-[#716D65] hover:text-[#211E1A]'
             }`}
           >
-            Home
+            <span>Home</span>
+            {lists.length > 0 && (
+              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded-full bg-stone-200/80 text-stone-700">
+                {lists.length}
+              </span>
+            )}
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('repost')}
+            onClick={() => {
+              setActiveTab('repost');
+              setSelectedListId(null);
+            }}
             className={`pb-3 text-sm tracking-wide transition-colors relative cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'repost'
                 ? 'text-[#211E1A] font-medium after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#211E1A]'
@@ -260,7 +410,10 @@ export function ProfilePage() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('about')}
+            onClick={() => {
+              setActiveTab('about');
+              setSelectedListId(null);
+            }}
             className={`pb-3 text-sm tracking-wide transition-colors relative cursor-pointer ${
               activeTab === 'about'
                 ? 'text-[#211E1A] font-medium after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#211E1A]'
@@ -271,35 +424,163 @@ export function ProfilePage() {
           </button>
         </nav>
 
-        {/* Tab 1: Home (Authored stories) */}
+        {/* Tab 1: Home (Reading Lists / Saved Collections) */}
         {activeTab === 'home' && (
           <div>
-            {loadingMyStories ? (
-              <div className="py-16 text-center text-[#716D65] text-sm flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Loading your stories...</span>
-              </div>
-            ) : myStories.length > 0 ? (
-              <div className="space-y-0">
-                {myStories.map((story) => (
-                  <StoryCard key={story.id} story={story} />
-                ))}
+            {!selectedListId ? (
+              // Overview of all Reading Lists
+              <div>
+                {/* Lists Subheader with "+ New list" button */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xs uppercase tracking-[0.16em] text-[#716D65] font-semibold">
+                      Your Lists
+                    </h2>
+                    <p className="text-xs text-[#8A867E] mt-0.5">
+                      Curate stories into dedicated collections like technical, spiritual, or data science.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#211E1A] hover:bg-stone-800 text-[#F8F7F3] rounded-full text-xs font-medium transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>New list</span>
+                  </button>
+                </div>
+
+                {loadingLists ? (
+                  <div className="py-16 text-center text-[#716D65] text-sm flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Loading your lists...</span>
+                  </div>
+                ) : lists.length > 0 ? (
+                  <div className="space-y-4">
+                    {lists.map((l) => (
+                      <ReadingListCard
+                        key={l.id}
+                        list={l}
+                        authorName={user.name}
+                        authorAvatar={user.avatarUrl}
+                        onClick={() => setSelectedListId(l.id)}
+                        onEdit={(listToEdit) => handleStartEdit(listToEdit)}
+                        onDelete={(idToDelete) => handleDeleteList(idToDelete)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 px-4 border border-dashed border-[#DDD9D0] rounded-xl">
+                    <BookOpen className="w-8 h-8 text-stone-400 mx-auto mb-3 stroke-[1.5]" />
+                    <p className="font-editorial text-xl text-[#211E1A] mb-2">
+                      No reading lists yet
+                    </p>
+                    <p className="text-xs text-[#716D65] mb-5 max-w-sm mx-auto">
+                      Create collections to organize essays you want to read, reference, or revisit later.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#211E1A] text-[#F8F7F3] text-xs font-medium hover:bg-stone-800 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Create your first list</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="text-center py-16 px-4 border border-dashed border-[#DDD9D0] rounded-xl">
-                <BookOpen className="w-8 h-8 text-stone-400 mx-auto mb-3 stroke-[1.5]" />
-                <p className="font-editorial text-xl text-[#211E1A] mb-2">
-                  No stories published yet
-                </p>
-                <p className="text-xs text-[#716D65] mb-5 max-w-sm mx-auto">
-                  Share your ideas, research, or essays with readers on The Margin.
-                </p>
-                <Link
-                  to="/write"
-                  className="inline-flex items-center px-5 py-2 rounded-full bg-[#211E1A] text-[#F8F7F3] text-xs font-medium hover:bg-stone-800 transition-colors"
+              // Selected List Detail View
+              <div>
+                {/* Back to lists button */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedListId(null)}
+                  className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-[#716D65] hover:text-[#211E1A] transition-colors mb-6 cursor-pointer"
                 >
-                  Write a story
-                </Link>
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>All lists</span>
+                </button>
+
+                {loadingListDetail ? (
+                  <div className="py-16 text-center text-[#716D65] text-sm flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Loading collection...</span>
+                  </div>
+                ) : selectedListDetail ? (
+                  <div>
+                    {/* List Header */}
+                    <div className="border-b border-[#DDD9D0] pb-6 mb-8">
+                      <div className="flex items-center gap-2 text-xs text-[#716D65] mb-2">
+                        <span>Curated by</span>
+                        <span className="font-medium text-[#211E1A]">{user.name}</span>
+                        {selectedListDetail.isPrivate && (
+                          <>
+                            <span className="text-[#DDD9D0]">·</span>
+                            <span className="inline-flex items-center gap-1 text-[#8A867E]">
+                              <Lock className="w-3 h-3" /> Private list
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      <h2 className="font-editorial text-3xl sm:text-4xl font-bold text-[#211E1A]">
+                        {selectedListDetail.name}
+                      </h2>
+
+                      {selectedListDetail.description && (
+                        <p className="text-sm text-[#716D65] mt-2 font-normal">
+                          {selectedListDetail.description}
+                        </p>
+                      )}
+
+                      <div className="mt-3 text-xs text-[#8A867E]">
+                        {selectedListDetail.storyCount}{' '}
+                        {selectedListDetail.storyCount === 1 ? 'story' : 'stories'} saved
+                      </div>
+                    </div>
+
+                    {/* Stories in this List */}
+                    {selectedListDetail.stories && selectedListDetail.stories.length > 0 ? (
+                      <div className="space-y-6">
+                        {selectedListDetail.stories.map((story) => (
+                          <div key={story.id} className="relative group/item">
+                            <StoryCard story={story} />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStoryFromList(story.id)}
+                              className="absolute top-2 right-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-1 text-stone-400 hover:text-rose-600 rounded-full hover:bg-stone-100 cursor-pointer"
+                              title="Remove from this list"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-16 px-4 border border-dashed border-[#DDD9D0] rounded-xl">
+                        <BookOpen className="w-8 h-8 text-stone-400 mx-auto mb-3 stroke-[1.5]" />
+                        <p className="font-editorial text-xl text-[#211E1A] mb-2">
+                          No stories in this list yet
+                        </p>
+                        <p className="text-xs text-[#716D65] mb-5 max-w-sm mx-auto">
+                          Click the Save icon on any story to add it directly to this collection.
+                        </p>
+                        <Link
+                          to="/"
+                          className="inline-flex items-center px-5 py-2 rounded-full bg-[#211E1A] text-[#F8F7F3] text-xs font-medium hover:bg-stone-800 transition-colors"
+                        >
+                          Explore stories
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-[#716D65] text-sm">
+                    List not found or removed.
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -540,6 +821,171 @@ export function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Create List Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div
+            className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+              <h2 className="font-editorial text-2xl font-bold text-stone-900">
+                Create new list
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1 rounded-full text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateList} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+                  Give it a name
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                  placeholder="e.g. technical, spiritual, data science"
+                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-900 outline-none focus:bg-white focus:border-stone-800 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+                  Description <span className="font-normal text-stone-400 lowercase">(optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={newListDescription}
+                  onChange={(e) => setNewListDescription(e.target.value)}
+                  placeholder="A short note about what this collection is for..."
+                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-900 outline-none focus:bg-white focus:border-stone-800 transition-colors resize-none"
+                />
+              </div>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2 text-xs text-stone-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={newListPrivate}
+                    onChange={(e) => setNewListPrivate(e.target.checked)}
+                    className="rounded border-stone-300 text-stone-900 focus:ring-0"
+                  />
+                  <span>Make it private (only you can see this list)</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 text-xs text-stone-600 hover:text-stone-900 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newListName.trim() || isCreatingList}
+                  className="px-5 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-full text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isCreatingList && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Create list</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit List Modal */}
+      {editingList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div
+            className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+              <h2 className="font-editorial text-2xl font-bold text-stone-900">
+                Edit list
+              </h2>
+              <button
+                type="button"
+                onClick={() => setEditingList(null)}
+                className="p-1 rounded-full text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateList} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+                  List name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-900 outline-none focus:bg-white focus:border-stone-800 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
+                  Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-900 outline-none focus:bg-white focus:border-stone-800 transition-colors resize-none"
+                />
+              </div>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2 text-xs text-stone-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editPrivate}
+                    onChange={(e) => setEditPrivate(e.target.checked)}
+                    className="rounded border-stone-300 text-stone-900 focus:ring-0"
+                  />
+                  <span>Make it private</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingList(null)}
+                  className="px-4 py-2 text-xs text-stone-600 hover:text-stone-900 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!editName.trim() || isUpdatingList}
+                  className="px-5 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-full text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isUpdatingList && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Save changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+export default ProfilePage;
