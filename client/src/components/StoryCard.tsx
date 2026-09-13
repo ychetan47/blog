@@ -50,12 +50,12 @@ export function StoryCard({ story }: { story: Post }) {
   };
 
   return (
-    <article className="border-b border-[#DDD9D0] py-7 sm:py-9 first:pt-2 last:border-b-0">
-      <div className="flex items-start justify-between gap-5 sm:gap-8 lg:gap-10">
-        {/* Left (70–75%): Story Content */}
+    <article className="border-b border-[#DDD9D0] py-5 sm:py-6.5 first:pt-0 last:border-b-0">
+      <div className="flex items-start justify-between gap-5 sm:gap-7 lg:gap-9">
+        {/* Left (70–72%): Story Content */}
         <div className="flex-1 min-w-0">
           {/* 1. Category · Subcategory · Date */}
-          <div className="flex flex-wrap items-center gap-y-1 text-[11px] sm:text-[12px] uppercase tracking-[0.16em] text-[#716D65] mb-2.5">
+          <div className="flex flex-wrap items-center gap-y-1 text-[11px] sm:text-[12px] uppercase tracking-[0.16em] text-[#716D65] mb-2">
             <span className="font-medium text-[#211E1A]">{categoryName}</span>
             {story.matchedSubcategories && story.matchedSubcategories.length > 0 ? (
               <>
@@ -78,27 +78,27 @@ export function StoryCard({ story }: { story: Post }) {
             <span>{story.readingTime} min read</span>
           </div>
 
-          {/* 2. Story Title */}
+          {/* 2. Story Title (30-34px desktop) */}
           <Link to={`/blog/${story.slug}`} className="block group">
-            <h2 className="font-editorial text-2xl sm:text-3xl lg:text-[32px] text-[#211E1A] font-normal leading-[1.18] tracking-tight group-hover:text-[#716D65] transition-colors">
+            <h2 className="font-editorial text-2xl sm:text-[27px] lg:text-[31px] text-[#211E1A] font-normal leading-[1.18] tracking-tight group-hover:text-[#716D65] transition-colors">
               {story.title}
             </h2>
           </Link>
 
-          {/* 3. Short Story Excerpt */}
+          {/* 3. Short Story Excerpt (2 lines) */}
           {story.excerpt && (
-            <p className="text-[#716D65] text-sm sm:text-[15px] leading-relaxed mt-2.5 font-normal line-clamp-2 sm:line-clamp-3">
+            <p className="text-[#716D65] text-sm sm:text-[15px] leading-relaxed mt-2 font-normal line-clamp-2">
               {story.excerpt}
             </p>
           )}
 
           {/* 4. Byline */}
-          <div className="mt-3 text-xs sm:text-[13px] text-[#8A867E]">
+          <div className="mt-2.5 text-xs sm:text-[13px] text-[#8A867E]">
             By <span className="text-[#211E1A] font-normal">{story.author?.name || 'Editorial Staff'}</span>
           </div>
 
           {/* 5. Engagement Actions: Save · Clap · Comment · Share */}
-          <div className="mt-5 flex items-center gap-4 text-xs text-[#8A867E]">
+          <div className="mt-3.5 sm:mt-4 flex items-center gap-4 text-xs text-[#8A867E]">
             <SaveButton postId={story.id} initialIsSaved={story.isSaved} />
 
             <button
@@ -137,14 +137,14 @@ export function StoryCard({ story }: { story: Post }) {
           </div>
         </div>
 
-        {/* Right (25–30%): Compact Editorial Thumbnail Image */}
+        {/* Right (28–30%): Compact Editorial Thumbnail Image (180-210px width, 115-135px height) */}
         {story.coverImage && (
           <Link
             to={`/blog/${story.slug}`}
             className="block shrink-0 group mt-1"
             aria-label={story.title}
           >
-            <div className="w-[100px] h-[72px] sm:w-[155px] sm:h-[108px] md:w-[195px] md:h-[135px] lg:w-[215px] lg:h-[148px] overflow-hidden rounded-[3px] border border-[#DDD9D0]/80 bg-[#EFECE6]/50">
+            <div className="w-[95px] h-[68px] sm:w-[150px] sm:h-[105px] md:w-[190px] md:h-[125px] lg:w-[205px] lg:h-[135px] overflow-hidden rounded-[3px] border border-[#DDD9D0]/80 bg-[#EFECE6]/50">
               <img
                 src={story.coverImage}
                 alt={story.title}

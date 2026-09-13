@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../services/api.js';
 import type { FeedResponse } from '../types/index.js';
 import { StoryCard } from '../components/StoryCard.js';
-import { PickedForYou } from '../components/PickedForYou.js';
+import { PickOfTheWeek } from '../components/PickOfTheWeek.js';
+import { RecommendedTopics } from '../components/RecommendedTopics.js';
 import { useAuth } from '../context/AuthContext.js';
 
 export function HomePage() {
@@ -24,6 +25,7 @@ export function HomePage() {
       .catch(() =>
         setFeed({
           stories: [],
+          pickOfTheWeek: [],
           pickedForYou: [],
           moreToExplore: [],
           personalized: false,
@@ -75,23 +77,24 @@ export function HomePage() {
     );
   }
 
-  // 2. AUTHENTICATED VIEW: Strictly personalized feed + separate discovery sidebar
+  // 2. AUTHENTICATED VIEW: Strictly personalized feed + compact Pick of the Week & Recommended Topics
   const personalizedStories = feed?.stories || [];
+  const pickOfTheWeekStories = feed?.pickOfTheWeek || feed?.pickedForYou || [];
   const interestList = feed?.userInterests || [];
 
   return (
     <div className="w-full min-h-screen bg-[#F8F7F3]">
-      <section className="max-w-[1240px] mx-auto px-6 sm:px-12 lg:px-16 pt-10 sm:pt-14 pb-28 sm:pb-36">
+      <section className="max-w-[1240px] mx-auto px-6 sm:px-10 lg:px-14 pt-6 sm:pt-9 pb-24 sm:pb-32">
         {/* Editorial Header */}
-        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4 border-b border-[#DDD9D0] pb-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3 border-b border-[#DDD9D0] pb-4 mb-6">
           <div>
-            <h1 className="font-editorial text-4xl sm:text-5xl text-[#211E1A] font-normal tracking-tight">
+            <h1 className="font-editorial text-3xl sm:text-4xl text-[#211E1A] font-normal tracking-tight">
               Stories for you
             </h1>
-            <p className="text-sm sm:text-base text-[#716D65] mt-2 font-normal">
+            <p className="text-xs sm:text-sm text-[#716D65] mt-1 font-normal">
               {interestList.length > 0 ? (
                 <span>
-                  Personalized reading based on your interests in{' '}
+                  Curated according to your interests in{' '}
                   <span className="text-[#211E1A] font-medium">
                     {interestList.slice(0, 3).join(', ')}
                     {interestList.length > 3 ? ` and ${interestList.length - 3} more` : ''}
@@ -99,25 +102,25 @@ export function HomePage() {
                   .
                 </span>
               ) : (
-                <span>Personalized stories tailored to your reading preferences.</span>
+                <span>Personalized reading tailored to your selected topics.</span>
               )}
             </p>
           </div>
 
           <Link
             to="/profile"
-            className="text-xs text-[#716D65] hover:text-[#211E1A] transition-colors shrink-0 hover:underline underline-offset-4"
+            className="text-xs text-[#716D65] hover:text-[#211E1A] transition-colors shrink-0 hover:underline underline-offset-4 font-medium"
           >
             Manage interests →
           </Link>
         </div>
 
         {/* Main Content: Responsive 2-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-12 items-start">
           {/* Main Column: Personalized Stories ONLY */}
           <main className="lg:col-span-8 min-w-0" aria-label="Personalized story feed">
             {loading ? (
-              <div className="py-24 text-center text-[#8A867E]">
+              <div className="py-20 text-center text-[#8A867E]">
                 <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
                   Opening the journal...
                 </p>
@@ -131,7 +134,7 @@ export function HomePage() {
                 </div>
 
                 {/* Natural End of Feed (Strictly NO unrelated stories appended) */}
-                <div className="py-14 text-center">
+                <div className="py-12 text-center">
                   <span className="inline-block w-8 h-[1px] bg-[#DDD9D0] mb-3" />
                   <p className="text-xs uppercase tracking-[0.2em] text-[#8A867E]">
                     End of personalized stories
@@ -139,11 +142,11 @@ export function HomePage() {
                 </div>
               </div>
             ) : (
-              <div className="py-14 text-center sm:text-left">
+              <div className="py-12 text-center sm:text-left">
                 <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
                   No stories match your selected topics yet
                 </p>
-                <p className="text-sm text-[#716D65] max-w-lg mb-6">
+                <p className="text-sm text-[#716D65] max-w-lg mb-6 leading-relaxed">
                   Select topics in your profile to populate your reading feed with stories tailored to your interests, or browse the complete topic directory.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 justify-center sm:justify-start">
@@ -164,12 +167,21 @@ export function HomePage() {
             )}
           </main>
 
-          {/* Right Rail: Picked for you Discovery Sidebar (Desktop sticky, Mobile below feed) */}
-          <div className="lg:col-span-4 border-t border-[#DDD9D0] pt-10 lg:border-t-0 lg:pt-0">
-            <div className="lg:sticky lg:top-24 pt-2 lg:border-l lg:border-[#DDD9D0]/60 lg:pl-8">
-              <PickedForYou stories={feed?.pickedForYou || []} />
+          {/* Right Rail: Compact Pick of the Week + Recommended Topics Sidebar */}
+          <aside
+            className="lg:col-span-4 border-t border-[#DDD9D0] pt-8 lg:border-t-0 lg:pt-0"
+            aria-label="Editorial sidebar"
+          >
+            <div className="lg:sticky lg:top-20 pt-0.5 lg:border-l lg:border-[#DDD9D0]/70 lg:pl-7 xl:pl-9 space-y-6">
+              {/* 1. Pick of the Week (3 stories, compact, no images, See full list →) */}
+              <PickOfTheWeek stories={pickOfTheWeekStories} />
+
+              {/* 2. Recommended Topics (5-6 topics, +, See more topics →) */}
+              <div className="border-t border-[#DDD9D0]/70 pt-5">
+                <RecommendedTopics />
+              </div>
             </div>
-          </div>
+          </aside>
         </div>
       </section>
     </div>

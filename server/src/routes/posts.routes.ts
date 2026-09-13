@@ -118,35 +118,60 @@ async function computePersonalizedFeed(user: any, options: { category?: string; 
       return new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime();
     });
 
-    // Picked for you: exactly 3–5 curated discovery stories outside user's interests (matchScore === 0)
-    const candidateDiscovery = [...nonMatchingStories].sort((a, b) => {
-      const scoreA = (a.views || 0) + (a.claps || 0) * 2;
-      const scoreB = (b.views || 0) + (b.claps || 0) * 2;
-      return scoreB - scoreA;
-    });
+    // 4. Compute Pick of the Week:
+    // Relevant, high engagement, recent, editorial quality, strictly EXCLUDING main feed stories
+    const mainFeedIds = new Set(matchingStories.map((s) => s.id));
+    const userCategoryIds = new Set(
+      matchingStories.map((s) => s.categoryId || s.category?.id).filter(Boolean)
+    );
 
-    const pickedForYou: typeof scoredPosts = [];
-    const seenCategories = new Set<string>();
+    const pickCandidates = scoredPosts
+      .filter((p) => !mainFeedIds.has(p.id))
+      .map((story) => {
+        let score = 0;
+        // Domain / category alignment
+        if (userCategoryIds.has(story.categoryId)) {
+          score += 35;
+        }
+        // Engagement
+        score += Math.min(30, (story.views || 0) * 0.1 + (story.claps || 0) * 0.6);
+        // Featured
+        if (story.featured) score += 15;
+        // Recency
+        const ageDays = (Date.now() - new Date(story.publishedAt || 0).getTime()) / (1000 * 60 * 60 * 24);
+        if (ageDays < 14) score += 10;
+        else if (ageDays < 30) score += 5;
+        // Controlled freshness variance
+        score += Math.random() * 5;
 
-    for (const story of candidateDiscovery) {
-      if (pickedForYou.length >= 4) break;
-      const catId = story.categoryId || story.category?.id || '';
-      if (!seenCategories.has(catId)) {
-        pickedForYou.push(story);
-        seenCategories.add(catId);
+        return { story, score };
+      });
+
+    pickCandidates.sort((a, b) => b.score - a.score);
+
+    // Pick 3-4 distinct stories
+    const pickOfTheWeek: typeof scoredPosts = [];
+    const seenPickCategories = new Set<string>();
+
+    for (const c of pickCandidates) {
+      if (pickOfTheWeek.length >= 3) break;
+      const catId = c.story.categoryId || '';
+      if (!seenPickCategories.has(catId) || pickCandidates.length <= 3) {
+        pickOfTheWeek.push(c.story);
+        seenPickCategories.add(catId);
       }
     }
-    // Fill up to 4 if candidates remain
-    for (const story of candidateDiscovery) {
-      if (pickedForYou.length >= 4) break;
-      if (!pickedForYou.some((p) => p.id === story.id)) {
-        pickedForYou.push(story);
+    for (const c of pickCandidates) {
+      if (pickOfTheWeek.length >= 3) break;
+      if (!pickOfTheWeek.some((p) => p.id === c.story.id)) {
+        pickOfTheWeek.push(c.story);
       }
     }
 
     return {
       stories: matchingStories,
-      pickedForYou,
+      pickOfTheWeek,
+      pickedForYou: pickOfTheWeek,
       moreToExplore: [], // Unrelated content must NEVER appear as an additional feed section at bottom
       personalized: matchingStories.length > 0,
       userInterests: userInterestNames,
@@ -154,15 +179,94 @@ async function computePersonalizedFeed(user: any, options: { category?: string; 
   }
 
   // Fallback: If no interests or filtered by category/search
-  const candidateDiscovery = [...scoredPosts].slice(0, 4);
+  const candidatePick = [...scoredPosts]
+    .sort((a, b) => (b.views + b.claps * 2) - (a.views + a.claps * 2))
+    .slice(0, 3);
+
   return {
     stories: category || search ? scoredPosts : [],
-    pickedForYou: candidateDiscovery,
+    pickOfTheWeek: candidatePick,
+    pickedForYou: candidatePick,
     moreToExplore: [],
     personalized: false,
     userInterests: userInterestNames,
   };
 }
+
+/**
+ * GET /api/posts/pick-of-the-week & GET /api/stories/pick-of-the-week
+ * Returns the full curated list of Pick of the Week stories for the dedicated page
+ */
+postsRouter.get('/pick-of-the-week', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = req.user;
+    // Fetch user interests
+    let userSubcategoryIds: string[] = [];
+    if (user) {
+      const interests = await db.userInterest.findMany({
+        where: { userId: user.id },
+        select: { subcategoryId: true },
+      });
+      userSubcategoryIds = interests.map((i) => i.subcategoryId);
+    }
+
+    const allPublished = await db.post.findMany({
+      where: { published: true },
+      include: {
+        author: { select: { id: true, name: true, avatarUrl: true, role: true } },
+        category: true,
+        subcategories: {
+          include: {
+            subcategory: { select: { id: true, name: true, slug: true, categoryId: true } },
+          },
+        },
+        tags: { include: { tag: true } },
+        _count: { select: { clapsList: true, comments: true, savedBy: true } },
+        ...(user
+          ? {
+              savedBy: {
+                where: { userId: user.id },
+                select: { id: true },
+              },
+            }
+          : {}),
+      },
+      orderBy: { publishedAt: 'desc' },
+    });
+
+    const userCategories = new Set<string>();
+    for (const post of allPublished) {
+      for (const ps of post.subcategories) {
+        if (userSubcategoryIds.includes(ps.subcategory.id)) {
+          userCategories.add(ps.subcategory.categoryId);
+        }
+      }
+    }
+
+    const scored = allPublished.map((post) => {
+      const postSubs = post.subcategories.map((ps) => ps.subcategory);
+      let score = (post.views || 0) * 0.1 + (post.claps || 0) * 0.6;
+      if (userCategories.has(post.categoryId)) score += 30;
+      if (post.featured) score += 20;
+
+      return {
+        ...post,
+        subcategories: postSubs,
+        tags: post.tags.map((t) => t.tag.name),
+        isSaved: Boolean(post.savedBy && post.savedBy.length > 0),
+        score,
+      };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const topStories = scored.slice(0, 15);
+
+    res.json({ stories: topStories, total: topStories.length });
+  } catch (error) {
+    console.error('Error fetching pick-of-the-week:', error);
+    res.status(500).json({ error: 'Failed to fetch Pick of the Week stories' });
+  }
+});
 
 /**
  * GET /api/posts/feed & GET /api/stories/feed

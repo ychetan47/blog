@@ -139,6 +139,7 @@ export const api = {
       }>(`/posts${qs ? `?${qs}` : ''}`);
     },
     getFeed: () => request<FeedResponse>('/posts/feed'),
+    pickOfTheWeek: () => request<{ stories: Post[]; total: number }>('/posts/pick-of-the-week'),
     getBySlug: (slug: string) =>
       request<{ post: Post }>(`/posts/${encodeURIComponent(slug)}`),
     getDraft: (id: string) =>

@@ -68,16 +68,16 @@ export function RecommendedTopics() {
 
   if (loading) {
     return (
-      <div className="py-6">
-        <h3 className="text-xs uppercase tracking-[0.18em] text-[#716D65] font-medium mb-4">
+      <section aria-label="Recommended topics" className="pt-1">
+        <h3 className="text-[11px] sm:text-[12px] uppercase tracking-[0.16em] text-[#716D65] font-medium mb-3">
           Recommended Topics
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-8 bg-[#EFECE6]/70 rounded-md animate-pulse" />
+            <div key={i} className="h-6 bg-[#EFECE6]/60 rounded animate-pulse" />
           ))}
         </div>
-      </div>
+      </section>
     );
   }
 
@@ -85,25 +85,28 @@ export function RecommendedTopics() {
     return null;
   }
 
+  // 5-7 topics
+  const displayTopics = topics.slice(0, 6);
+
   return (
-    <aside aria-label="Recommended topics" className="py-2">
-      <h3 className="text-xs uppercase tracking-[0.18em] text-[#716D65] font-medium mb-4">
+    <section aria-label="Recommended topics" className="pt-1">
+      <h3 className="text-[11px] sm:text-[12px] uppercase tracking-[0.16em] text-[#716D65] font-medium mb-3">
         Recommended Topics
       </h3>
 
-      <div className="space-y-3.5">
-        {topics.map((topic) => {
+      <div className="space-y-2">
+        {displayTopics.map((topic) => {
           const isBusy = togglingId === topic.id;
           const following = Boolean(topic.isFollowing);
 
           return (
             <div
               key={topic.id}
-              className="flex items-center justify-between gap-3 group py-0.5"
+              className="flex items-center justify-between gap-2.5 group py-0.5"
             >
               <Link
                 to={`/topics/${topic.slug}`}
-                className="text-[14px] sm:text-[15px] text-[#211E1A] hover:text-[#716D65] transition-colors font-normal leading-snug flex-1 truncate"
+                className="text-[13.5px] sm:text-[14px] text-[#211E1A] hover:text-[#716D65] transition-colors font-normal leading-snug flex-1 truncate"
               >
                 {topic.name}
               </Link>
@@ -114,18 +117,18 @@ export function RecommendedTopics() {
                 disabled={isBusy}
                 aria-label={following ? `Unfollow ${topic.name}` : `Follow ${topic.name}`}
                 title={following ? 'Following' : 'Follow topic'}
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 border ${
+                className={`w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 border ${
                   following
                     ? 'border-stone-800 bg-[#211E1A] text-[#F8F7F3]'
                     : 'border-[#DDD9D0] text-[#716D65] hover:border-[#211E1A] hover:text-[#211E1A] bg-transparent'
                 }`}
               >
                 {isBusy ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
                 ) : following ? (
-                  <Check className="w-3 h-3" />
+                  <Check className="w-2.5 h-2.5" />
                 ) : (
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3 h-3" />
                 )}
               </button>
             </div>
@@ -133,14 +136,16 @@ export function RecommendedTopics() {
         })}
       </div>
 
-      <div className="mt-5 pt-3 border-t border-[#DDD9D0]/60">
+      <div className="mt-3.5 pt-2.5 border-t border-[#DDD9D0]/60">
         <Link
           to="/topics"
-          className="inline-flex items-center gap-1 text-xs text-[#716D65] hover:text-[#211E1A] hover:underline underline-offset-4 tracking-wide transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-[#716D65] hover:text-[#211E1A] hover:underline underline-offset-4 tracking-wide transition-colors font-medium"
         >
-          See more topics →
+          <span>See more topics →</span>
         </Link>
       </div>
-    </aside>
+    </section>
   );
 }
+
+export default RecommendedTopics;

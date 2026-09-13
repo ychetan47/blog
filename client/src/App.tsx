@@ -14,6 +14,7 @@ import { OnboardingPage } from './pages/OnboardingPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
 import { TopicDiscoveryPage } from './pages/TopicDiscoveryPage.js';
 import { TopicDetailPage } from './pages/TopicDetailPage.js';
+import { PickOfTheWeekPage } from './pages/PickOfTheWeekPage.js';
 
 export function App() {
   return (
@@ -77,6 +78,7 @@ export function App() {
               />
               <Route path="/topics" element={<TopicDiscoveryPage />} />
               <Route path="/topics/:slug" element={<TopicDetailPage />} />
+              <Route path="/pick-of-the-week" element={<PickOfTheWeekPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

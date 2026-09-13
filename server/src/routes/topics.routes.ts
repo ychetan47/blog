@@ -167,14 +167,14 @@ topicsRouter.get('/recommended', optionalAuth, async (req: AuthenticatedRequest,
 
     scoredCandidates.sort((a, b) => b.score - a.score);
 
-    // Pick top 5 topics (maximum 6)
-    let selected = scoredCandidates.slice(0, 5).map((c) => c.topic);
+    // Pick top 6 topics (5-7 range)
+    let selected = scoredCandidates.slice(0, 6).map((c) => c.topic);
 
     // Fallback if user already follows almost everything or no unfollowed topics
-    if (selected.length < 4) {
+    if (selected.length < 5) {
       const remaining = allTopics
         .sort((a, b) => b._count.storySubcategories - a._count.storySubcategories)
-        .slice(0, 5);
+        .slice(0, 6);
       selected = remaining;
     }
 

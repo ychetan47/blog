@@ -77,6 +77,7 @@ export interface Subcategory {
 
 export interface FeedResponse {
   stories: Post[];
+  pickOfTheWeek?: Post[];
   pickedForYou?: Post[];
   moreToExplore?: Post[];
   personalized: boolean;
