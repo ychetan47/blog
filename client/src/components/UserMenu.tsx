@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Bookmark, UserRound, BookOpen, LogOut } from 'lucide-react';
+import { Home, Bookmark, UserRound, BookOpen, Compass, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 
 interface UserMenuProps {
@@ -55,6 +55,7 @@ export function UserMenu({ isOpen, onClose }: UserMenuProps) {
 
   const menuItems = [
     { label: 'Home', icon: Home, path: '/' },
+    { label: 'Explore topics', icon: Compass, path: '/topics' },
     { label: 'Library', icon: Bookmark, path: '/library' },
     { label: 'Profile', icon: UserRound, path: '/profile' },
     { label: 'Stories', icon: BookOpen, path: '/stories' },

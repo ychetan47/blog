@@ -12,6 +12,8 @@ import { LoginPage } from './pages/LoginPage.js';
 import { SignUpPage } from './pages/SignUpPage.js';
 import { OnboardingPage } from './pages/OnboardingPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
+import { TopicDiscoveryPage } from './pages/TopicDiscoveryPage.js';
+import { TopicDetailPage } from './pages/TopicDetailPage.js';
 
 export function App() {
   return (
@@ -73,6 +75,8 @@ export function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/topics" element={<TopicDiscoveryPage />} />
+              <Route path="/topics/:slug" element={<TopicDetailPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

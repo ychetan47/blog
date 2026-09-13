@@ -91,3 +91,32 @@ export interface Comment {
   content: string;
   createdAt: string;
 }
+
+export interface TopicItem {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  categoryId: string;
+  categoryName?: string;
+  categorySlug?: string;
+  categoryColor?: string;
+  storyCount?: number;
+  followerCount?: number;
+  isFollowing?: boolean;
+}
+
+export interface TopicCategoryGroup {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  color?: string;
+  topics: TopicItem[];
+}
+
+export interface TopicStoriesResponse {
+  topic: TopicItem;
+  stories: Post[];
+  totalStories: number;
+}

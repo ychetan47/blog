@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../services/api.js';
 import type { Post, FeedResponse } from '../types/index.js';
 import { StoryCard } from '../components/StoryCard.js';
+import { RecommendedTopics } from '../components/RecommendedTopics.js';
 import { useAuth } from '../context/AuthContext.js';
 
 export function HomePage() {
@@ -108,7 +109,7 @@ export function HomePage() {
         </div>
 
         {/* Tab Navigation: For You vs. Explore All */}
-        <div className="flex items-center justify-between border-b border-[#DDD9D0] mb-6">
+        <div className="flex items-center justify-between border-b border-[#DDD9D0] mb-8">
           <div className="flex items-center gap-8">
             <button
               type="button"
@@ -142,80 +143,92 @@ export function HomePage() {
           </Link>
         </div>
 
-        {/* Stories Listing */}
-        {loading ? (
-          <div className="py-24 text-center text-[#8A867E]">
-            <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
-              Opening the journal...
-            </p>
-          </div>
-        ) : activeTab === 'for-you' ? (
-          <div>
-            {matchedStories.length > 0 ? (
-              <div className="divide-y divide-[#DDD9D0]">
-                {matchedStories.map((post) => (
-                  <StoryCard key={post.id} story={post} />
-                ))}
-              </div>
-            ) : (
-              <div className="py-12 border-b border-[#DDD9D0] text-center sm:text-left">
-                <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
-                  No direct matches for your followed interests yet
-                </p>
-                <p className="text-sm text-[#716D65] max-w-lg">
-                  Explore fresh essays below or update your reading subcategories in your{' '}
-                  <Link to="/profile" className="text-[#211E1A] underline underline-offset-4">
-                    profile settings
-                  </Link>
-                  .
-                </p>
-              </div>
-            )}
-
-            {/* Graceful Fallback: More To Explore */}
-            {moreToExplore.length > 0 && (
-              <div className="mt-14 pt-10 border-t border-[#DDD9D0]">
-                <div className="mb-6">
-                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#716D65] block mb-1">
-                    Extended Library
-                  </span>
-                  <h2 className="font-editorial text-3xl text-[#211E1A] font-normal tracking-tight">
-                    More to explore
-                  </h2>
-                  <p className="text-sm text-[#716D65] mt-1">
-                    Notable stories across the publication outside your primary interests.
-                  </p>
-                </div>
-
-                <div className="divide-y divide-[#DDD9D0]">
-                  {moreToExplore.map((post) => (
-                    <StoryCard key={post.id} story={post} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Explore All Tab */
-          <div>
-            {allStories.length === 0 ? (
+        {/* Main Content: Responsive 2-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
+          {/* Main Column: Stories Listing */}
+          <div className="lg:col-span-8 min-w-0">
+            {loading ? (
               <div className="py-24 text-center text-[#8A867E]">
                 <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
-                  No essays found
-                </p>
-                <p className="text-sm text-[#716D65]">
-                  Check back soon for new essays.
+                  Opening the journal...
                 </p>
               </div>
+            ) : activeTab === 'for-you' ? (
+              <div>
+                {matchedStories.length > 0 ? (
+                  <div className="divide-y divide-[#DDD9D0]">
+                    {matchedStories.map((post) => (
+                      <StoryCard key={post.id} story={post} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 border-b border-[#DDD9D0] text-center sm:text-left">
+                    <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
+                      No direct matches for your followed interests yet
+                    </p>
+                    <p className="text-sm text-[#716D65] max-w-lg">
+                      Explore fresh essays below or update your reading subcategories in your{' '}
+                      <Link to="/profile" className="text-[#211E1A] underline underline-offset-4">
+                        profile settings
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                )}
+
+                {/* Graceful Fallback: More To Explore */}
+                {moreToExplore.length > 0 && (
+                  <div className="mt-14 pt-10 border-t border-[#DDD9D0]">
+                    <div className="mb-6">
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-[#716D65] block mb-1">
+                        Extended Library
+                      </span>
+                      <h2 className="font-editorial text-3xl text-[#211E1A] font-normal tracking-tight">
+                        More to explore
+                      </h2>
+                      <p className="text-sm text-[#716D65] mt-1">
+                        Notable stories across the publication outside your primary interests.
+                      </p>
+                    </div>
+
+                    <div className="divide-y divide-[#DDD9D0]">
+                      {moreToExplore.map((post) => (
+                        <StoryCard key={post.id} story={post} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              <div className="divide-y divide-[#DDD9D0]">
-                {allStories.map((post) => (
-                  <StoryCard key={post.id} story={post} />
-                ))}
+              /* Explore All Tab */
+              <div>
+                {allStories.length === 0 ? (
+                  <div className="py-24 text-center text-[#8A867E]">
+                    <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
+                      No essays found
+                    </p>
+                    <p className="text-sm text-[#716D65]">
+                      Check back soon for new essays.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#DDD9D0]">
+                    {allStories.map((post) => (
+                      <StoryCard key={post.id} story={post} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+
+          {/* Right Rail: Discovery & Recommended Topics */}
+          <div className="lg:col-span-4">
+            <div className="lg:sticky lg:top-28 pt-2 lg:border-l lg:border-[#DDD9D0]/60 lg:pl-8">
+              <RecommendedTopics />
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );

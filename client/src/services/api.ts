@@ -1,4 +1,14 @@
-import type { User, Post, Category, Comment, Subcategory, FeedResponse } from '../types/index.js';
+import type {
+  User,
+  Post,
+  Category,
+  Comment,
+  Subcategory,
+  FeedResponse,
+  TopicItem,
+  TopicCategoryGroup,
+  TopicStoriesResponse,
+} from '../types/index.js';
 
 const API_BASE = '/api';
 
@@ -82,6 +92,35 @@ export const api = {
       const qs = category ? `?category=${encodeURIComponent(category)}` : '';
       return request<{ subcategories: Subcategory[]; categories: any[] }>(`/subcategories${qs}`);
     },
+  },
+
+  topics: {
+    list: (params?: { category?: string; search?: string }) => {
+      const query = new URLSearchParams();
+      if (params?.category) query.append('category', params.category);
+      if (params?.search) query.append('search', params.search);
+      const qs = query.toString();
+      return request<{ topics: TopicItem[]; categories: TopicCategoryGroup[] }>(
+        `/topics${qs ? `?${qs}` : ''}`
+      );
+    },
+    recommended: () => request<{ topics: TopicItem[] }>('/topics/recommended'),
+    getBySlug: (slug: string) =>
+      request<{ topic: TopicItem }>(`/topics/${encodeURIComponent(slug)}`),
+    getStories: (slug: string, sort: 'latest' | 'popular' = 'latest') =>
+      request<TopicStoriesResponse>(
+        `/topics/${encodeURIComponent(slug)}/stories?sort=${sort}`
+      ),
+    follow: (topicId: string) =>
+      request<{ success: boolean; isFollowing: boolean; topic: any; user: User }>(
+        `/topics/${encodeURIComponent(topicId)}/follow`,
+        { method: 'POST' }
+      ),
+    unfollow: (topicId: string) =>
+      request<{ success: boolean; isFollowing: boolean; topic: any; user: User }>(
+        `/topics/${encodeURIComponent(topicId)}/follow`,
+        { method: 'DELETE' }
+      ),
   },
 
   posts: {
