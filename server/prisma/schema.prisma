@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  googleId     String?        @unique
+  email        String         @unique
+  name         String
+  passwordHash String?
+  role         String         @default("READER") // ADMIN, AUTHOR, READER
+  avatarUrl    String?
+  bio          String?
+  github       String?
+  twitter      String?
+  linkedin     String?
+  topics       String[]       @default([]) // Legacy string topics for backward compatibility
+  interests    UserInterest[] // Relational user interests linked to Subcategories
+  posts        Post[]
+  savedStories SavedStory[]
+  claps        StoryClap[]
+  comments     StoryComment[]
+  reposts      StoryRepost[]
+  sessions     Session[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String?  @db.Text
+  refreshToken String?  @db.Text
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  description   String?
+  color         String        @default("#D9E8FC")
+  icon          String?
+  posts         Post[]
+  subcategories Subcategory[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Subcategory {
+  id                 String             @id @default(cuid())
+  name               String
+  slug               String             @unique
+  description        String?
+  categoryId         String
+  category           Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  storySubcategories StorySubcategory[]
+  userInterests      UserInterest[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([categoryId])
+}
+
+model StorySubcategory {
+  id            String      @id @default(cuid())
+  postId        String
+  subcategoryId String
+  post          Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([postId, subcategoryId])
+  @@index([postId])
+  @@index([subcategoryId])
+}
+
+model UserInterest {
+  id            String      @id @default(cuid())
+  userId        String
+  subcategoryId String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, subcategoryId])
+  @@index([userId])
+  @@index([subcategoryId])
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  posts     PostTag[]
+  createdAt DateTime  @default(now())
+}
+
+model Post {
+  id           String             @id @default(cuid())
+  title        String
+  slug         String             @unique
+  excerpt      String
+  content      String
+  coverImage   String?
+  illustration String             @default("editorial-notebook")
+  readingTime  Int                @default(3)
+  featured     Boolean            @default(false)
+  published    Boolean            @default(true)
+  views        Int                @default(0)
+  likes        Int                @default(0)
+  claps        Int                @default(120)
+  reposts      Int                @default(14)
+  publishedAt  DateTime?          @default(now())
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  authorId     String
+  author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  categoryId   String
+  category     Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  subcategories StorySubcategory[]
+  tags         PostTag[]
+  savedBy      SavedStory[]
+  clapsList    StoryClap[]
+  comments     StoryComment[]
+  repostsList  StoryRepost[]
+
+  @@index([published])
+  @@index([publishedAt])
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+model SavedStory {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model StoryClap {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  count     Int      @default(1)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model StoryComment {
+  id           String   @id @default(cuid())
+  postId       String
+  userId       String
+  authorName   String
+  authorAvatar String?
+  content      String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model StoryRepost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model Settings {
+  id              String   @id @default("default")
+  siteName        String   @default("The Margin")
+  siteDescription String   @default("An independent journal about reading, craft, and quiet software.")
+  heroTitle       String   @default("Slow reading for a fast internet.")
+  heroSubtitle    String   @default("Essays on typography, attention and the craft of making things worth finishing.")
+  authorName      String   @default("Devansh Rao")
+  authorBio       String   @default("Writer and engineer observing software craft, interface tranquility, and distributed systems.")
+  avatarUrl       String   @default("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80")
+  githubUrl       String   @default("https://github.com")
+  twitterUrl      String   @default("https://twitter.com")
+  linkedinUrl     String   @default("https://linkedin.com")
+  updatedAt       DateTime @updatedAt
+}

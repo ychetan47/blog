@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #f8f7f3;
+    --background-muted: #f3f1eb;
+    --foreground: #211e1a;
+    --foreground-muted: #716d65;
+    --foreground-subtle: #8a867e;
+    --border: #ddd9d0;
+    --accent: #211e1a;
+    --accent-foreground: #f8f7f3;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Hide scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Subtle scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #ddd9d0;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8a867e;
+}
+
+/* Editorial Serif Typography - un-bolded, elegant and natural per design spec */
+.font-editorial {
+  font-family: var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif;
+  font-weight: 400;
+}
+
+/* Prose Editorial Styles */
+.prose-editorial {
+  font-size: 1.1875rem; /* ~19px */
+  line-height: 1.78;
+  color: var(--foreground);
+}
+
+.prose-editorial h1 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 2.75rem;
+  font-weight: 400;
+  line-height: 1.15;
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--foreground);
+  letter-spacing: -0.025em;
+}
+
+.prose-editorial h2 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.25;
+  margin-top: 2.75rem;
+  margin-bottom: 1rem;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.prose-editorial h3 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.35;
+  margin-top: 2.25rem;
+  margin-bottom: 0.75rem;
+  color: var(--foreground);
+}
+
+.prose-editorial p {
+  margin-top: 1.85rem; /* ~30px */
+  margin-bottom: 1.85rem;
+  color: #2e2a25;
+}
+
+/* Editorial Drop Cap for the opening paragraph */
+.prose-editorial > p:first-of-type::first-letter {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 4.25rem;
+  font-weight: 400;
+  line-height: 0.8;
+  float: left;
+  margin-right: 0.65rem;
+  margin-top: 0.15rem;
+  color: var(--foreground);
+}
+
+.prose-editorial blockquote {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.35rem;
+  line-height: 1.6;
+  border-left: 2px solid var(--foreground);
+  padding-left: 1.75rem;
+  margin: 2.5rem 0;
+  color: #4a453e;
+}
+
+.prose-editorial code:not(pre code) {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.88em;
+  padding: 0.18em 0.4em;
+  background-color: var(--background-muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+}
+
+/* Breakout images inside articles */
+.breakout-editorial {
+  width: 100vw;
+  max-width: 960px;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+@media (min-width: 1024px) {
+  .breakout-editorial {
+    margin-left: -480px;
+    margin-right: -480px;
+    left: 50%;
+  }
+}
+
+.caption-editorial {
+  font-size: 0.75rem;
+  color: var(--foreground-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.75rem;
+  text-align: center;
+}
