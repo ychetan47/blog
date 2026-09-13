@@ -118,17 +118,46 @@ async function computePersonalizedFeed(user: any, options: { category?: string; 
       return new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime();
     });
 
+    // Picked for you: exactly 3–5 curated discovery stories outside user's interests (matchScore === 0)
+    const candidateDiscovery = [...nonMatchingStories].sort((a, b) => {
+      const scoreA = (a.views || 0) + (a.claps || 0) * 2;
+      const scoreB = (b.views || 0) + (b.claps || 0) * 2;
+      return scoreB - scoreA;
+    });
+
+    const pickedForYou: typeof scoredPosts = [];
+    const seenCategories = new Set<string>();
+
+    for (const story of candidateDiscovery) {
+      if (pickedForYou.length >= 4) break;
+      const catId = story.categoryId || story.category?.id || '';
+      if (!seenCategories.has(catId)) {
+        pickedForYou.push(story);
+        seenCategories.add(catId);
+      }
+    }
+    // Fill up to 4 if candidates remain
+    for (const story of candidateDiscovery) {
+      if (pickedForYou.length >= 4) break;
+      if (!pickedForYou.some((p) => p.id === story.id)) {
+        pickedForYou.push(story);
+      }
+    }
+
     return {
       stories: matchingStories,
-      moreToExplore: nonMatchingStories,
+      pickedForYou,
+      moreToExplore: [], // Unrelated content must NEVER appear as an additional feed section at bottom
       personalized: matchingStories.length > 0,
       userInterests: userInterestNames,
     };
   }
 
   // Fallback: If no interests or filtered by category/search
+  const candidateDiscovery = [...scoredPosts].slice(0, 4);
   return {
-    stories: scoredPosts,
+    stories: category || search ? scoredPosts : [],
+    pickedForYou: candidateDiscovery,
     moreToExplore: [],
     personalized: false,
     userInterests: userInterestNames,
@@ -161,16 +190,11 @@ postsRouter.get('/', optionalAuth, async (req: AuthenticatedRequest, res: Respon
       search: typeof search === 'string' ? search : undefined,
     });
 
-    // Return flattened posts list ranked by matchScore, plus personalized metadata
-    const allPosts = [
-      ...result.stories,
-      ...(result.moreToExplore.length > 0 ? result.moreToExplore : []),
-    ];
-
     res.json({
-      posts: allPosts,
+      posts: result.stories,
       stories: result.stories,
-      moreToExplore: result.moreToExplore,
+      pickedForYou: result.pickedForYou,
+      moreToExplore: [],
       personalized: result.personalized,
       userInterests: result.userInterests,
     });

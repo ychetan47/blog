@@ -77,7 +77,8 @@ export interface Subcategory {
 
 export interface FeedResponse {
   stories: Post[];
-  moreToExplore: Post[];
+  pickedForYou?: Post[];
+  moreToExplore?: Post[];
   personalized: boolean;
   userInterests: string[];
 }

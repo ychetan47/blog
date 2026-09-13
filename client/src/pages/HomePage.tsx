@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api.js';
-import type { Post, FeedResponse } from '../types/index.js';
+import type { FeedResponse } from '../types/index.js';
 import { StoryCard } from '../components/StoryCard.js';
-import { RecommendedTopics } from '../components/RecommendedTopics.js';
+import { PickedForYou } from '../components/PickedForYou.js';
 import { useAuth } from '../context/AuthContext.js';
 
 export function HomePage() {
   const [feed, setFeed] = useState<FeedResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<'for-you' | 'explore'>('for-you');
   const [loading, setLoading] = useState(false);
   const { user, openAuthModal } = useAuth();
 
@@ -25,6 +24,7 @@ export function HomePage() {
       .catch(() =>
         setFeed({
           stories: [],
+          pickedForYou: [],
           moreToExplore: [],
           personalized: false,
           userInterests: [],
@@ -75,69 +75,38 @@ export function HomePage() {
     );
   }
 
-  // 2. AUTHENTICATED VIEW: Personalized feed with subcategory recommendations
-  const matchedStories = feed?.stories || [];
-  const moreToExplore = feed?.moreToExplore || [];
-  const allStories: Post[] = [...matchedStories, ...moreToExplore].sort(
-    (a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
-  );
-
+  // 2. AUTHENTICATED VIEW: Strictly personalized feed + separate discovery sidebar
+  const personalizedStories = feed?.stories || [];
   const interestList = feed?.userInterests || [];
 
   return (
     <div className="w-full min-h-screen bg-[#F8F7F3]">
       <section className="max-w-[1240px] mx-auto px-6 sm:px-12 lg:px-16 pt-10 sm:pt-14 pb-28 sm:pb-36">
         {/* Editorial Header */}
-        <div className="mb-8">
-          <h1 className="font-editorial text-4xl sm:text-5xl text-[#211E1A] font-normal tracking-tight">
-            Stories for you
-          </h1>
-          <p className="text-sm sm:text-base text-[#716D65] mt-2 max-w-2xl font-normal">
-            {feed?.personalized && interestList.length > 0 ? (
-              <span>
-                Personalized reading based on your interests in{' '}
-                <span className="text-[#211E1A] font-medium">
-                  {interestList.slice(0, 3).join(', ')}
-                  {interestList.length > 3 ? ` and ${interestList.length - 3} more` : ''}
+        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4 border-b border-[#DDD9D0] pb-6 mb-8">
+          <div>
+            <h1 className="font-editorial text-4xl sm:text-5xl text-[#211E1A] font-normal tracking-tight">
+              Stories for you
+            </h1>
+            <p className="text-sm sm:text-base text-[#716D65] mt-2 font-normal">
+              {interestList.length > 0 ? (
+                <span>
+                  Personalized reading based on your interests in{' '}
+                  <span className="text-[#211E1A] font-medium">
+                    {interestList.slice(0, 3).join(', ')}
+                    {interestList.length > 3 ? ` and ${interestList.length - 3} more` : ''}
+                  </span>
+                  .
                 </span>
-                .
-              </span>
-            ) : (
-              <span>Slow reading for a fast internet. Curated perspectives on typography, design, and craft.</span>
-            )}
-          </p>
-        </div>
-
-        {/* Tab Navigation: For You vs. Explore All */}
-        <div className="flex items-center justify-between border-b border-[#DDD9D0] mb-8">
-          <div className="flex items-center gap-8">
-            <button
-              type="button"
-              onClick={() => setActiveTab('for-you')}
-              className={`text-sm tracking-wide transition-colors pb-3 -mb-[1px] cursor-pointer ${
-                activeTab === 'for-you'
-                  ? 'border-b-2 border-[#211E1A] text-[#211E1A] font-medium'
-                  : 'text-[#716D65] hover:text-[#211E1A]'
-              }`}
-            >
-              For You
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('explore')}
-              className={`text-sm tracking-wide transition-colors pb-3 -mb-[1px] cursor-pointer ${
-                activeTab === 'explore'
-                  ? 'border-b-2 border-[#211E1A] text-[#211E1A] font-medium'
-                  : 'text-[#716D65] hover:text-[#211E1A]'
-              }`}
-            >
-              Explore All
-            </button>
+              ) : (
+                <span>Personalized stories tailored to your reading preferences.</span>
+              )}
+            </p>
           </div>
 
           <Link
             to="/profile"
-            className="text-xs text-[#716D65] hover:text-[#211E1A] transition-colors pb-3"
+            className="text-xs text-[#716D65] hover:text-[#211E1A] transition-colors shrink-0 hover:underline underline-offset-4"
           >
             Manage interests →
           </Link>
@@ -145,87 +114,60 @@ export function HomePage() {
 
         {/* Main Content: Responsive 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
-          {/* Main Column: Stories Listing */}
-          <div className="lg:col-span-8 min-w-0">
+          {/* Main Column: Personalized Stories ONLY */}
+          <main className="lg:col-span-8 min-w-0" aria-label="Personalized story feed">
             {loading ? (
               <div className="py-24 text-center text-[#8A867E]">
                 <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
                   Opening the journal...
                 </p>
               </div>
-            ) : activeTab === 'for-you' ? (
+            ) : personalizedStories.length > 0 ? (
               <div>
-                {matchedStories.length > 0 ? (
-                  <div className="divide-y divide-[#DDD9D0]">
-                    {matchedStories.map((post) => (
-                      <StoryCard key={post.id} story={post} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-12 border-b border-[#DDD9D0] text-center sm:text-left">
-                    <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
-                      No direct matches for your followed interests yet
-                    </p>
-                    <p className="text-sm text-[#716D65] max-w-lg">
-                      Explore fresh essays below or update your reading subcategories in your{' '}
-                      <Link to="/profile" className="text-[#211E1A] underline underline-offset-4">
-                        profile settings
-                      </Link>
-                      .
-                    </p>
-                  </div>
-                )}
+                <div className="divide-y divide-[#DDD9D0]">
+                  {personalizedStories.map((post) => (
+                    <StoryCard key={post.id} story={post} />
+                  ))}
+                </div>
 
-                {/* Graceful Fallback: More To Explore */}
-                {moreToExplore.length > 0 && (
-                  <div className="mt-14 pt-10 border-t border-[#DDD9D0]">
-                    <div className="mb-6">
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-[#716D65] block mb-1">
-                        Extended Library
-                      </span>
-                      <h2 className="font-editorial text-3xl text-[#211E1A] font-normal tracking-tight">
-                        More to explore
-                      </h2>
-                      <p className="text-sm text-[#716D65] mt-1">
-                        Notable stories across the publication outside your primary interests.
-                      </p>
-                    </div>
-
-                    <div className="divide-y divide-[#DDD9D0]">
-                      {moreToExplore.map((post) => (
-                        <StoryCard key={post.id} story={post} />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Natural End of Feed (Strictly NO unrelated stories appended) */}
+                <div className="py-14 text-center">
+                  <span className="inline-block w-8 h-[1px] bg-[#DDD9D0] mb-3" />
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#8A867E]">
+                    End of personalized stories
+                  </p>
+                </div>
               </div>
             ) : (
-              /* Explore All Tab */
-              <div>
-                {allStories.length === 0 ? (
-                  <div className="py-24 text-center text-[#8A867E]">
-                    <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
-                      No essays found
-                    </p>
-                    <p className="text-sm text-[#716D65]">
-                      Check back soon for new essays.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-[#DDD9D0]">
-                    {allStories.map((post) => (
-                      <StoryCard key={post.id} story={post} />
-                    ))}
-                  </div>
-                )}
+              <div className="py-14 text-center sm:text-left">
+                <p className="font-editorial text-2xl text-[#211E1A] font-normal mb-2">
+                  No stories match your selected topics yet
+                </p>
+                <p className="text-sm text-[#716D65] max-w-lg mb-6">
+                  Select topics in your profile to populate your reading feed with stories tailored to your interests, or browse the complete topic directory.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 justify-center sm:justify-start">
+                  <Link
+                    to="/profile"
+                    className="inline-flex items-center px-5 py-2.5 rounded-full bg-[#211E1A] text-[#F8F7F3] text-xs uppercase tracking-[0.16em] font-medium hover:bg-stone-800 transition-colors"
+                  >
+                    Select interests
+                  </Link>
+                  <Link
+                    to="/topics"
+                    className="inline-flex items-center px-5 py-2.5 rounded-full border border-[#DDD9D0] text-[#211E1A] text-xs uppercase tracking-[0.16em] font-medium hover:border-[#211E1A] transition-colors"
+                  >
+                    Explore all topics
+                  </Link>
+                </div>
               </div>
             )}
-          </div>
+          </main>
 
-          {/* Right Rail: Discovery & Recommended Topics */}
-          <div className="lg:col-span-4">
-            <div className="lg:sticky lg:top-28 pt-2 lg:border-l lg:border-[#DDD9D0]/60 lg:pl-8">
-              <RecommendedTopics />
+          {/* Right Rail: Picked for you Discovery Sidebar (Desktop sticky, Mobile below feed) */}
+          <div className="lg:col-span-4 border-t border-[#DDD9D0] pt-10 lg:border-t-0 lg:pt-0">
+            <div className="lg:sticky lg:top-24 pt-2 lg:border-l lg:border-[#DDD9D0]/60 lg:pl-8">
+              <PickedForYou stories={feed?.pickedForYou || []} />
             </div>
           </div>
         </div>
@@ -233,3 +175,5 @@ export function HomePage() {
     </div>
   );
 }
+
+export default HomePage;
