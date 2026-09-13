@@ -11,6 +11,7 @@ import onboardingRouter from './routes/onboarding.routes.js';
 import settingsRouter from './routes/settings.routes.js';
 import unsplashRouter from './routes/unsplash.routes.js';
 import { subcategoriesRouter } from './routes/subcategories.routes.js';
+import topicsRouter from './routes/topics.routes.js';
 import { seedTaxonomy } from './lib/seedTaxonomy.js';
 
 dotenv.config();
@@ -60,6 +61,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/subcategories', subcategoriesRouter);
+app.use('/api/topics', topicsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/unsplash', unsplashRouter);
 
