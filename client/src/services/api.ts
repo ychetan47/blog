@@ -8,6 +8,7 @@ import type {
   TopicItem,
   TopicCategoryGroup,
   TopicStoriesResponse,
+  RepostItem,
 } from '../types/index.js';
 
 const API_BASE = '/api';
@@ -188,6 +189,10 @@ export const api = {
       request<{ saved: boolean }>(`/posts/${id}/save`, {
         method: 'POST',
       }),
+    repost: (id: string) =>
+      request<{ reposted: boolean; count: number }>(`/posts/${id}/repost`, {
+        method: 'POST',
+      }),
     getComments: (id: string) =>
       request<{ comments: Comment[] }>(`/posts/${id}/comments`),
     postComment: (id: string, content: string) =>
@@ -214,6 +219,7 @@ export const api = {
         body: JSON.stringify({ topics }),
       }),
     getProfile: () => request<{ profile: User & { interests?: Array<{ subcategory: Subcategory }> } }>('/users/profile'),
+    getReposts: () => request<{ reposts: RepostItem[] }>('/users/me/reposts'),
   },
 
   categories: {

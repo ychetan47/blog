@@ -303,4 +303,66 @@ usersRouter.put('/profile', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
+/**
+ * GET /api/users/me/reposts & GET /api/users/reposts
+ * Retrieves stories reposted by the authenticated user
+ */
+usersRouter.get(['/me/reposts', '/reposts'], authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const repostRecords = await prisma.storyRepost.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        post: {
+          include: {
+            author: { select: { id: true, name: true, avatarUrl: true, role: true } },
+            category: true,
+            subcategories: {
+              include: {
+                subcategory: { select: { id: true, name: true, slug: true, categoryId: true } },
+              },
+            },
+            tags: { include: { tag: true } },
+            _count: { select: { clapsList: true, comments: true, savedBy: true } },
+            savedBy: {
+              where: { userId },
+              select: { id: true },
+            },
+            repostsList: {
+              where: { userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    const reposts = repostRecords
+      .filter((r) => r.post !== null && r.post.published)
+      .map((r) => {
+        const p = r.post;
+        return {
+          repostId: r.id,
+          repostedAt: r.createdAt.toISOString(),
+          repostedBy: 'You',
+          post: {
+            ...p,
+            isSaved: (p.savedBy?.length ?? 0) > 0,
+            isReposted: true,
+            subcategories: p.subcategories.map((ps) => ps.subcategory),
+            tags: p.tags.map((t) => t.tag.name),
+            savedCount: p._count.savedBy,
+            commentsCount: p._count.comments,
+          },
+        };
+      });
+
+    res.json({ reposts });
+  } catch (error) {
+    console.error('Error fetching reposts:', error);
+    res.status(500).json({ error: 'Failed to fetch reposts' });
+  }
+});
+
 export default usersRouter;

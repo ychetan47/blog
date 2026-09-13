@@ -8,6 +8,7 @@ export interface User {
   topics: string[];
   savedCount?: number;
   storiesCount?: number;
+  createdAt?: string;
 }
 
 export interface Category {
@@ -55,6 +56,7 @@ export interface Post {
   isPersonalized?: boolean;
   tags?: string[] | Array<{ tag: { id: string; name: string; slug: string } }>;
   isSaved?: boolean;
+  isReposted?: boolean;
   savedAt?: string;
   _count?: {
     clapsList?: number;
@@ -62,6 +64,13 @@ export interface Post {
     savedBy?: number;
     repostsList?: number;
   };
+}
+
+export interface RepostItem {
+  repostId: string;
+  repostedAt: string;
+  repostedBy: string;
+  post: Post;
 }
 
 export interface Subcategory {

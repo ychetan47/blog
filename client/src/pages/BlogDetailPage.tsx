@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare, ThumbsUp, Share2 } from 'lucide-react';
 import { api } from '../services/api.js';
 import type { Post } from '../types/index.js';
 import { SaveButton } from '../components/SaveButton.js';
+import { RepostButton } from '../components/RepostButton.js';
+import { StoryMoreMenu } from '../components/StoryMoreMenu.js';
+import { CommentsDrawer } from '../components/CommentsDrawer.js';
 import { AuthorCard } from '../components/AuthorCard.js';
 import { KeepReading } from '../components/KeepReading.js';
 import { ArticleRenderer } from '../components/ArticleRenderer.js';
@@ -16,6 +19,10 @@ export function BlogDetailPage() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [claps, setClaps] = useState(0);
+  const [hasClapped, setHasClapped] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -26,6 +33,7 @@ export function BlogDetailPage() {
       .getBySlug(slug)
       .then((res) => {
         setPost(res.post);
+        setClaps(res.post.claps || 0);
         // Fetch related posts
         api.posts
           .list()
@@ -46,6 +54,31 @@ export function BlogDetailPage() {
       .catch((err) => setError(err.message || 'Story not found'))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  const handleClap = async () => {
+    if (!post) return;
+    setClaps((prev) => prev + 1);
+    setHasClapped(true);
+    try {
+      await api.posts.clap(post.id, 1);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleShare = async () => {
+    if (!post) return;
+    const url = window.location.href;
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // fallback
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -116,7 +149,7 @@ export function BlogDetailPage() {
           <span>{post.readingTime} min read</span>
         </div>
 
-        {/* Story Title: font-weight 400 unbolded */}
+        {/* Story Title */}
         <h1 className="font-editorial text-[36px] sm:text-[48px] lg:text-[56px] text-[#211E1A] font-normal leading-[1.08] tracking-tight">
           {post.title}
         </h1>
@@ -128,12 +161,83 @@ export function BlogDetailPage() {
           </p>
         )}
 
-        {/* Byline + Save Action */}
-        <div className="mt-8 pt-5 border-t border-b border-[#DDD9D0] pb-5 flex items-center justify-between">
-          <div className="text-sm sm:text-base text-[#716D65]">
-            By <span className="text-[#211E1A] font-normal">{post.author?.name || 'Editorial Staff'}</span>
+        {/* Top Byline + Engagement Action Bar */}
+        <div className="mt-8 pt-5 pb-4 border-t border-b border-[#DDD9D0]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {post.author?.avatarUrl ? (
+                <img
+                  src={post.author.avatarUrl}
+                  alt={post.author.name}
+                  className="w-10 h-10 rounded-full object-cover border border-stone-200"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#EFECE6] text-[#211E1A] flex items-center justify-center font-editorial font-medium text-base">
+                  {post.author?.name?.charAt(0) || 'E'}
+                </div>
+              )}
+              <div>
+                <div className="text-sm font-medium text-[#211E1A]">{post.author?.name || 'Editorial Staff'}</div>
+                <div className="text-xs text-[#8A867E]">
+                  Published in <span className="text-[#211E1A]">{categoryName}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <SaveButton postId={post.id} initialIsSaved={post.isSaved} size="sm" />
+
+          {/* Action Bar: Left [Clap, Comment, Repost] | Right [Share, Save, Three Dots] */}
+          <div className="mt-4 pt-3 border-t border-[#DDD9D0]/70 flex items-center justify-between text-xs text-[#8A867E]">
+            <div className="flex items-center gap-5 sm:gap-6">
+              <button
+                type="button"
+                onClick={handleClap}
+                className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
+                title="Clap"
+              >
+                <ThumbsUp className={`w-4 h-4 ${hasClapped ? 'text-[#211E1A]' : ''}`} />
+                <span className="font-mono text-xs tabular-nums">{claps > 1000 ? `${(claps / 1000).toFixed(1)}k` : claps}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCommentsOpen(true)}
+                className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
+                title="Comments"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span className="font-mono text-xs tabular-nums">{post._count?.comments || 0}</span>
+              </button>
+
+              <RepostButton
+                postId={post.id}
+                initialReposted={post.isReposted}
+                initialCount={post.reposts ?? (post._count?.repostsList ?? 0)}
+                size="md"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="inline-flex items-center gap-1 text-stone-500 hover:text-stone-900 transition-colors p-1.5 rounded-full hover:bg-stone-100"
+                title={copied ? 'Link copied' : 'Share story'}
+              >
+                <Share2 className="w-4 h-4" />
+                {copied && <span className="text-[11px] text-emerald-700 font-medium">Copied</span>}
+              </button>
+
+              <SaveButton postId={post.id} initialIsSaved={post.isSaved} size="md" />
+
+              <StoryMoreMenu
+                slug={post.slug}
+                authorId={post.authorId || post.author?.id}
+                authorName={post.author?.name}
+                title={post.title}
+                size="md"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Hero Image */}
@@ -175,6 +279,60 @@ export function BlogDetailPage() {
           </div>
         )}
 
+        {/* Bottom Engagement Action Bar */}
+        <div className="my-8 py-3.5 border-t border-b border-[#DDD9D0] flex items-center justify-between text-xs text-[#8A867E]">
+          <div className="flex items-center gap-5 sm:gap-6">
+            <button
+              type="button"
+              onClick={handleClap}
+              className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
+              title="Clap"
+            >
+              <ThumbsUp className={`w-4 h-4 ${hasClapped ? 'text-[#211E1A]' : ''}`} />
+              <span className="font-mono text-xs tabular-nums">{claps > 1000 ? `${(claps / 1000).toFixed(1)}k` : claps}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCommentsOpen(true)}
+              className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
+              title="Comments"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="font-mono text-xs tabular-nums">{post._count?.comments || 0}</span>
+            </button>
+
+            <RepostButton
+              postId={post.id}
+              initialReposted={post.isReposted}
+              initialCount={post.reposts ?? (post._count?.repostsList ?? 0)}
+              size="md"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="inline-flex items-center gap-1 text-stone-500 hover:text-stone-900 transition-colors p-1.5 rounded-full hover:bg-stone-100"
+              title={copied ? 'Link copied' : 'Share story'}
+            >
+              <Share2 className="w-4 h-4" />
+              {copied && <span className="text-[11px] text-emerald-700 font-medium">Copied</span>}
+            </button>
+
+            <SaveButton postId={post.id} initialIsSaved={post.isSaved} size="md" />
+
+            <StoryMoreMenu
+              slug={post.slug}
+              authorId={post.authorId || post.author?.id}
+              authorName={post.author?.name}
+              title={post.title}
+              size="md"
+            />
+          </div>
+        </div>
+
         {/* Author Card */}
         <div className="mt-10 sm:mt-12">
           <AuthorCard
@@ -188,6 +346,16 @@ export function BlogDetailPage() {
         {/* Keep Reading List */}
         <KeepReading stories={relatedPosts} />
       </div>
+
+      {/* Comments Drawer */}
+      {post && (
+        <CommentsDrawer
+          isOpen={commentsOpen}
+          onClose={() => setCommentsOpen(false)}
+          postId={post.id}
+          storyTitle={post.title}
+        />
+      )}
     </div>
   );
 }

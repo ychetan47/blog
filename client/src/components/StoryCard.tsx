@@ -2,11 +2,41 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SaveButton } from './SaveButton.js';
 import { CommentsDrawer } from './CommentsDrawer.js';
-import { MessageSquare, ThumbsUp, Share2 } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Share2, Repeat2 } from 'lucide-react';
 import type { Post } from '../types/index.js';
 import { api } from '../services/api.js';
+import { RepostButton } from './RepostButton.js';
+import { StoryMoreMenu } from './StoryMoreMenu.js';
 
-export function StoryCard({ story }: { story: Post }) {
+function formatRelativeTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHours = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return 'recently';
+  }
+}
+
+export interface StoryCardProps {
+  story: Post;
+  repostBadge?: {
+    repostedBy: string;
+    repostedAt: string;
+  };
+}
+
+export function StoryCard({ story, repostBadge }: StoryCardProps) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [claps, setClaps] = useState(story.claps || 0);
   const [hasClapped, setHasClapped] = useState(false);
@@ -51,6 +81,16 @@ export function StoryCard({ story }: { story: Post }) {
 
   return (
     <article className="border-b border-[#DDD9D0] py-5 sm:py-6.5 first:pt-0 last:border-b-0">
+      {/* Repost Badge (e.g. You reposted · just now) */}
+      {repostBadge && (
+        <div className="flex items-center gap-1.5 text-xs text-stone-500 mb-2.5">
+          <Repeat2 className="w-3.5 h-3.5 text-emerald-700 stroke-[2]" />
+          <span>
+            <span className="font-medium text-stone-800">{repostBadge.repostedBy}</span> reposted · {formatRelativeTime(repostBadge.repostedAt)}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-5 sm:gap-7 lg:gap-9">
         {/* Left (70–72%): Story Content */}
         <div className="flex-1 min-w-0">
@@ -97,43 +137,62 @@ export function StoryCard({ story }: { story: Post }) {
             By <span className="text-[#211E1A] font-normal">{story.author?.name || 'Editorial Staff'}</span>
           </div>
 
-          {/* 5. Engagement Actions: Save · Clap · Comment · Share */}
-          <div className="mt-3.5 sm:mt-4 flex items-center gap-4 text-xs text-[#8A867E]">
-            <SaveButton postId={story.id} initialIsSaved={story.isSaved} />
+          {/* 5. Engagement Actions: Left [Clap · Comment · Repost] | Right [Share · Save · More] */}
+          <div className="mt-3.5 sm:mt-4 flex items-center justify-between text-xs text-[#8A867E]">
+            <div className="flex items-center gap-4 sm:gap-5">
+              <button
+                type="button"
+                onClick={handleClap}
+                className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
+                title="Clap"
+              >
+                <ThumbsUp className={`w-3.5 h-3.5 ${hasClapped ? 'text-[#211E1A]' : ''}`} />
+                <span className="font-mono text-[11px] tabular-nums">{claps > 1000 ? `${(claps / 1000).toFixed(1)}k` : claps}</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={handleClap}
-              className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
-              title="Clap"
-            >
-              <ThumbsUp className={`w-3.5 h-3.5 ${hasClapped ? 'text-[#211E1A]' : ''}`} />
-              <span>{claps > 1000 ? `${(claps / 1000).toFixed(1)}k` : claps}</span>
-            </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCommentsOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
+                title="Comments"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span className="font-mono text-[11px] tabular-nums">{story._count?.comments || 0}</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setCommentsOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
-              title="Comments"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>{story._count?.comments || 0}</span>
-            </button>
+              <RepostButton
+                postId={story.id}
+                initialReposted={story.isReposted}
+                initialCount={story.reposts ?? (story._count?.repostsList ?? 0)}
+                size="sm"
+              />
+            </div>
 
-            <button
-              type="button"
-              onClick={handleShare}
-              className="inline-flex items-center gap-1.5 hover:text-[#211E1A] transition-colors cursor-pointer py-1"
-              title="Share story link"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>{copied ? 'Copied' : 'Share'}</span>
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="inline-flex items-center gap-1 text-stone-500 hover:text-stone-900 transition-colors p-1 rounded-full hover:bg-stone-100"
+                title={copied ? 'Link copied' : 'Share story link'}
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                {copied && <span className="text-[11px] text-emerald-700 font-medium">Copied</span>}
+              </button>
+
+              <SaveButton postId={story.id} initialIsSaved={story.isSaved} size="sm" />
+
+              <StoryMoreMenu
+                slug={story.slug}
+                authorId={story.authorId || story.author?.id}
+                authorName={story.author?.name}
+                title={story.title}
+                size="sm"
+              />
+            </div>
           </div>
         </div>
 

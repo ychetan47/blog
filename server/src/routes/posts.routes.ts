@@ -82,6 +82,10 @@ async function computePersonalizedFeed(user: any, options: { category?: string; 
               where: { userId: user.id },
               select: { id: true },
             },
+            repostsList: {
+              where: { userId: user.id },
+              select: { id: true },
+            },
           }
         : {}),
     },
@@ -101,6 +105,7 @@ async function computePersonalizedFeed(user: any, options: { category?: string; 
       matchScore,
       isPersonalized: matchScore > 0,
       isSaved: Boolean(post.savedBy && post.savedBy.length > 0),
+      isReposted: Boolean(post.repostsList && post.repostsList.length > 0),
     };
   });
 
@@ -685,6 +690,10 @@ postsRouter.get('/:slug', optionalAuth, async (req: AuthenticatedRequest, res: R
                 where: { userId: user.id },
                 select: { id: true },
               },
+              repostsList: {
+                where: { userId: user.id },
+                select: { id: true },
+              },
             }
           : {}),
       },
@@ -707,6 +716,7 @@ postsRouter.get('/:slug', optionalAuth, async (req: AuthenticatedRequest, res: R
         subcategories: post.subcategories.map((ps) => ps.subcategory),
         tags: post.tags.map((pt) => pt.tag.name),
         isSaved: Boolean(post.savedBy && post.savedBy.length > 0),
+        isReposted: Boolean(post.repostsList && post.repostsList.length > 0),
       },
     });
   } catch (error) {
@@ -769,6 +779,46 @@ postsRouter.post('/:id/save', authenticate, async (req: AuthenticatedRequest, re
     }
   } catch (error) {
     res.status(500).json({ error: 'Failed to toggle save story' });
+  }
+});
+
+/**
+ * POST /api/posts/:id/repost
+ * Toggles repost for the authenticated user
+ */
+postsRouter.post('/:id/repost', authenticate, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id: postId } = req.params;
+    const userId = req.user!.id;
+
+    const existing = await db.storyRepost.findUnique({
+      where: { userId_postId: { userId, postId } },
+    });
+
+    if (existing) {
+      await db.storyRepost.delete({
+        where: { id: existing.id },
+      });
+      const updated = await db.post.update({
+        where: { id: postId },
+        data: { reposts: { decrement: 1 } },
+        select: { reposts: true },
+      });
+      res.json({ reposted: false, count: Math.max(0, updated.reposts) });
+    } else {
+      await db.storyRepost.create({
+        data: { userId, postId },
+      });
+      const updated = await db.post.update({
+        where: { id: postId },
+        data: { reposts: { increment: 1 } },
+        select: { reposts: true },
+      });
+      res.json({ reposted: true, count: updated.reposts });
+    }
+  } catch (error) {
+    console.error('Error in /repost:', error);
+    res.status(500).json({ error: 'Failed to toggle repost' });
   }
 });
 
